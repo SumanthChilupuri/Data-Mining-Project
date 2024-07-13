@@ -1,0 +1,250 @@
+---
+title: "PROJECT MILESTONE 3"
+output: html_document
+date: "2024-04-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##library loading
+```{r 1}
+library(caret)
+library(nnet)
+library(pROC)
+library(gmodels)
+library(dplyr) 
+library(e1071)
+```
+
+
+##importing data into 
+```{r 2}
+StrokePred <- read.csv("C:/Users/katta/Downloads/healthcare-dataset-stroke-data cleaned.csv")
+```
+
+##droping ununcessary columns
+```{r 3}
+StrokePred[,c('work_type','Residence_type','smoking_status','id')] <- list(NULL)
+StrokePred
+```
+
+##spliting data into train-validation and test 
+```{r 4}
+set.seed(1234)
+#spliting 17% into test dataset
+sample <- sample.int(n = nrow(StrokePred), size = nrow(StrokePred)*0.17, replace = F)
+strokepred_test <- StrokePred[sample, ] ##Yields held-out test dataset
+strokepred_trainvalidation <- StrokePred[-sample, ]
+```
+
+```{r}
+library(imbalance)
+positives <- mwmote(strokepred_trainvalidation,  classAttr = 'stroke', numInstances = 1500)
+strokepred_balanced <- rbind(strokepred_trainvalidation, positives)
+table(strokepred_balanced$stroke)
+imbalanceRatio(strokepred_balanced, classAttr = 'stroke')
+```
+# Distribution of age by gender
+```{r}
+ggplot(StrokePred, aes(x = age, fill = Is_Female)) +
+  geom_density(alpha = 0.5, color = "#103846") +
+  labs(title = "Distribution of patients' gender",
+       color = "#1D4B5B") +
+  theme_minimal() +
+  theme(panel.grid = element_blank())  # Remove gridlines
+```
+
+
+```{r}
+ggplot(data = StrokePred, aes(x = Is_Female, fill = factor(stroke))) +
+  geom_bar(position = "dodge") +  # Stacked bar based on Stroke variable
+   labs(title = "Gender of patient", x = "Is_Female", color = "#1D4B5B") +
+  scale_fill_discrete(name = "Stroke", labels = c("No Stroke", "Stroke")) +  # Legend labels
+  theme_minimal() +
+  theme(panel.grid = element_blank(),  # Remove gridlines
+        legend.position = "bottom")
+```
+
+##correlation chart
+```{r}
+install.packages("corrplot")
+library(corrplot)
+corr_data<-cor(strokepred_balanced)
+corrplot(corr_data,method = 'color')
+```
+
+##spliting data into train and validation 
+```{r 5}
+set.seed(1234)
+#spliting 17% into validation dataset
+sample <- sample.int(n = nrow(strokepred_balanced), size = nrow(strokepred_balanced)*0.17, replace = F)
+strokepred_validation <- strokepred_balanced[sample, ] ##Yields validation dataset
+strokepred_train <- strokepred_balanced[-sample, ]
+```
+
+#checking number of row for each dataset
+```{r}
+nrow(strokepred_train)
+nrow(strokepred_validation)
+nrow(strokepred_test)
+head(strokepred_test)
+```
+
+
+```{r}
+strokepred_train_scaled <- scale(strokepred_train[,-ncol(strokepred_train)])
+strokepred_validation_scaled <- scale(strokepred_validation[,-ncol(strokepred_validation)])
+strokepred_test_scaled <- scale(strokepred_test[,-ncol(strokepred_test)])
+```
+
+##feature selection
+```{r}
+control <- rfeControl(functions = lmFuncs, # linear regression
+                      method = "repeatedcv", # repeated cv
+                      repeats = 5, # number of repeats
+                      number = 20) # number of folds
+```
+## Run recursive feature elimination (RFE)
+```{r}
+result_rfe1 <- rfe(x = strokepred_train_scaled, 
+                   y = strokepred_train$stroke, 
+                   sizes = c(1:14),
+                   rfeControl = control)
+
+
+result_rfe1
+
+```
+
+##Running Logestic Regression Model
+```{r 6}
+logistic_regression_model <- glm(stroke ~., data=strokepred_train, family="binomial") ##Or, can use all predictors except one using the ~ . -EXCLUDEDVARIABLE notation
+summary(logistic_regression_model) ##Outputs summary of model & coefficients
+```
+```{r 7}
+#predicting for training data set
+TRAINING_PREDICTIONS <- predict(logistic_regression_model, newdata=strokepred_train,type="response")
+strokepred_train$LOGIT_PRED = TRAINING_PREDICTIONS
+
+#predicting for validation data set
+VALIDATION_PREDICTIONS <- predict(logistic_regression_model, newdata=strokepred_validation,type="response")
+strokepred_validation$LOGIT_PRED = VALIDATION_PREDICTIONS
+
+#predicting for testing data set
+TEST_PREDICTIONS <- predict(logistic_regression_model, newdata=strokepred_test,type="response")
+strokepred_test$LOGIT_PRED = TEST_PREDICTIONS
+```
+
+
+```{r 8}
+##8. Evaluate validation & test predictions: Caret package must be loaded
+##to call this function!
+postResample(pred = VALIDATION_PREDICTIONS, obs =
+strokepred_validation$stroke)
+postResample(pred = TEST_PREDICTIONS, obs = strokepred_test$stroke)
+```
+
+
+```{r}
+#training
+myroc <- roc(strokepred_train$stroke, strokepred_train$LOGIT_PRED)
+auc(myroc) ##Print out AUC of training
+
+#validation
+myroc <- roc(strokepred_validation$stroke, strokepred_validation$LOGIT_PRED)
+auc(myroc) ##Print out AUC of validation
+
+#test
+myroc <- roc(strokepred_test$stroke, strokepred_test$LOGIT_PRED)
+auc(myroc) ##Print out AUC of test
+```
+
+
+
+```{r}
+strokepred_test
+```
+
+
+```{r}
+strokepred_validation <- strokepred_validation %>% mutate(LOGIT_CLASSIFICATION = 1*(LOGIT_PRED >= 0.5))
+
+strokepred_test <- strokepred_test %>% mutate(LOGIT_CLASSIFICATION = 1*(LOGIT_PRED >= 0.5))
+```
+
+
+```{r}
+validation_performance <- confusionMatrix(data=as.factor(strokepred_test$LOGIT_CLASSIFICATION), reference = as.factor(strokepred_test$stroke),positive="1") ##Generate confusion matrix (based on probability cutoff)
+validation_performance
+```
+
+
+```{r}
+test_performance <- confusionMatrix(data=as.factor(strokepred_test$LOGIT_CLASSIFICATION), reference = as.factor(strokepred_test$stroke),positive="1") ##Generate confusion matrix (based on probability cutoff)
+test_performance
+```
+
+##Running a SVM model
+```{r}
+
+model <- svm(strokepred_train_scaled[, -ncol(strokepred_train_scaled)], 
+             kernel = "radial", cost = 1000, gamma = 0.1)  
+```
+
+```{r}
+# Predict on validation data
+validation_pred <- predict(model, strokepred_validation_scaled[, -ncol(strokepred_validation_scaled)])
+
+
+
+# Predict on test data
+test_pred <- predict(model, strokepred_test_scaled[, -ncol(strokepred_test_scaled)])
+
+```
+
+
+```{r}
+validation_pred_numeric <- ifelse(validation_pred == TRUE, 1, 0)
+test_pred_numeric <- ifelse(test_pred == TRUE, 1, 0)
+
+```
+
+
+```{r}
+# Validation Confusion Matrix
+
+
+strokepred_validation_scaled$preds = validation_pred
+strokepred_validation_scaled$preds <- as.integer(as.logical(strokepred_validation_scaled$preds))
+# Generate confusion matrix
+
+validation_pred_factor <- factor(strokepred_validation_scaled$preds, levels = c(0, 1))
+
+# Assuming true labels are numeric (0/1)
+strokepred_validation$stroke_factor <- factor(strokepred_validation$stroke, levels = c(0, 1))
+
+# Generate confusion matrix
+validation_performance <- confusionMatrix(data = validation_pred_factor, reference = strokepred_validation$stroke_factor, positive = "1")
+print(validation_performance)
+
+```
+```{r}
+# Test Confusion Matrix
+
+
+strokepred_test_scaled$preds = test_pred
+strokepred_test_scaled$preds <- as.integer(as.logical(strokepred_test_scaled$preds))
+# Generate confusion matrix
+
+test_pred_factor <- factor(strokepred_test_scaled$preds, levels = c(0, 1))
+
+# Assuming true labels are numeric (0/1)
+strokepred_test$stroke_factor <- factor(strokepred_test$stroke, levels = c(0, 1))
+
+# Generate confusion matrix
+test_performance <- confusionMatrix(data = test_pred_factor, reference = strokepred_test$stroke_factor, positive = "1")
+print(test_performance)
+
+```
