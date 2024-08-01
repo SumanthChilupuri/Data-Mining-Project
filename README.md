@@ -1,4 +1,4 @@
-# Data Science Project2
+# Data Science Project 2
 
 ## Objective:
 Develop a machine learning model to predict brain stroke risk, utilizing health and demographic factors. This addresses a critical healthcare challenge, as stroke is the 2nd leading cause of death globally, responsible for approximately 11% of total deaths according to the World Health Organization.
