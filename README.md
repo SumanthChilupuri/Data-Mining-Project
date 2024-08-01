@@ -38,8 +38,8 @@ Develop a machine learning model to predict brain stroke risk, utilizing health 
 • Class imbalance remains a significant challenge in accurate stroke prediction<br><br>
 
 ## Recommendations : 
-- Expand training data size and diversity to improve generalization<br><br>
-- Explore advanced techniques like ensemble methods or neural networks<br><br>
-- Conduct more rigorous hyperparameter tuning, especially for SVM<br><br>
-- Consider other evaluation metrics beyond accuracy, given the imbalanced nature of the problem<br><br>
-- Incorporate domain expertise to refine feature selection and engineering<br><br>
+•Adjust the gap between recency and overall spending by upselling<br><br>
+•They need to address the highly important but negatively correlated "teen home" feature<br><br>
+•They can capitalize on the high importance "web visits per month" feature to drive even greater online traffic<br><br>
+
+
