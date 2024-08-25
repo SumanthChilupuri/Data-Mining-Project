@@ -6,7 +6,7 @@ Develop a machine learning model to predict brain stroke risk, utilizing health 
 ## Overview:
 •**Dataset**: 4,908 records with 16 features after preprocessing<br><br>
 •**Features include**: gender, age, hypertension, heart disease, marital status, work type, residence type, glucose level, BMI, smoking status<br><br>
-•**Tool**s: R (packages: caret, nnet, pROC, gmodels, dplyr, e1071)<br><br>
+•**Tool**s: R (packages: caret, nnet, pROC, gmodels, dplyr, e1071), Excel<br><br>
 •**Main techniques**: Logistic Regression, Support Vector Machines (SVM)<br><br>
 •**Data partitioning**: 17% test set, 17% of remaining as validation set, rest as training set<br><br>
 
